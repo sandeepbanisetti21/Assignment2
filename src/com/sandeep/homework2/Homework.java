@@ -28,6 +28,7 @@ public class Homework {
 		node.setChildren(getChildren(inputBoard));
 		node.setOrderedChildren(sortListByUtility(node.getChildren()));
 		node.setParent(null);
+		node.setPruned(false);
 
 		return node;
 	}
