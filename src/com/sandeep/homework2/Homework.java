@@ -5,8 +5,12 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.Deque;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
@@ -19,24 +23,215 @@ public class Homework {
 	private static final int minValue = -99999;
 
 	private void runAlphaBetaPruning() {
-		// it does alph beta pruning and gives best option to play with.
 		Deque<Node> dfsStack = new ArrayDeque<>();
 		Node initalNode = createInitalNode();
 		dfsStack.push(initalNode);
 		while (!dfsStack.isEmpty()) {
 			Node node = dfsStack.pop();
-			Pair maxEnergyNode = evaluate(node.getBoard());
-			// char[][] updateBoard = getUpdatedBoard(node.getBoard(), maxEnergyNode);
-		}
-		char[][] updatedBoard = getUpdatedBoard(inputBoard, new Pair(1, 1));
-
-		for (int i = 0; i < inputBoard.length; i++) {
-			for (int j = 0; j < inputBoard.length; j++) {
-				System.out.print(updatedBoard[i][j]);
+			List<Node> children = getChildrenNodes(node);
+			for (Node node2 : children) {
+				System.out.println("Score is " + node2.selectedPosition.getEnergy() + "x is "
+						+ node2.getSelectedPosition().xPosition + "y is " + node2.getSelectedPosition().yPosition);
 			}
-			System.out.println();
+		}
+	}
+
+	private Node maxNode(int alpha, int beta, int maxDepth, Node node) {
+
+		if (isTerminal(node, maxDepth)) {
+			return node;
 		}
 
+		return null;
+	}
+
+	private boolean isTerminal(Node node, int maxDepth) {
+
+		if (node.getDepth() >= maxDepth) {
+			return true;
+		}
+		return false;
+	}
+
+	private void printNode(Node node2) {
+		System.out.println("Score is " + node2.selectedPosition.getEnergy() + "x is "
+				+ node2.getSelectedPosition().xPosition + "y is " + node2.getSelectedPosition().yPosition);
+	}
+
+	private boolean areTwoComponentsConnected(char[][] board, Pair inital, Pair next) {
+
+		if (inital.getxPosition() == next.getxPosition() && inital.getyPosition() == next.getyPosition()) {
+			return true;
+		}
+
+		boolean isTraversed[][] = new boolean[board.length][board.length];
+		Deque<Pair> valuePairstack = new ArrayDeque<>();
+		isTraversed[inital.getxPosition()][inital.getyPosition()] = true;
+		valuePairstack.addFirst(inital);
+		Pair pair;
+		int cellValue = getIntegerValueOfCell(board[inital.getxPosition()][inital.getyPosition()]);
+
+		while (!valuePairstack.isEmpty()) {
+			pair = valuePairstack.pop();
+
+			int xvalue = pair.getxPosition();
+			int yvalue = pair.getyPosition();
+
+			if (xvalue - 1 != -1 && isConsistent(board, isTraversed, xvalue - 1, yvalue, cellValue)) {
+				valuePairstack.addFirst(new Pair(xvalue - 1, yvalue));
+				isTraversed[xvalue - 1][yvalue] = true;
+
+				if (xvalue - 1 == next.getxPosition() && yvalue == next.getyPosition()) {
+					return true;
+				}
+			}
+			if (xvalue + 1 < boardSize && isConsistent(board, isTraversed, xvalue + 1, yvalue, cellValue)) {
+				valuePairstack.addFirst(new Pair(xvalue + 1, yvalue));
+				isTraversed[xvalue + 1][yvalue] = true;
+
+				if (xvalue + 1 == next.getxPosition() && yvalue == next.getyPosition()) {
+					return true;
+				}
+			}
+			if (yvalue - 1 != -1 && isConsistent(board, isTraversed, xvalue, yvalue - 1, cellValue)) {
+				valuePairstack.addFirst(new Pair(xvalue, yvalue - 1));
+				isTraversed[xvalue][yvalue - 1] = true;
+
+				if (xvalue == next.getxPosition() && yvalue - 1 == next.getyPosition()) {
+					return true;
+				}
+			}
+			if (yvalue + 1 < boardSize && isConsistent(board, isTraversed, xvalue, yvalue + 1, cellValue)) {
+				valuePairstack.addFirst(new Pair(xvalue, yvalue + 1));
+				isTraversed[xvalue][yvalue + 1] = true;
+
+				if (xvalue == next.getxPosition() && yvalue + 1 == next.getyPosition()) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	private List<Node> getChildrenNodes(Node parentNode) {
+
+		char[][] board = parentNode.getBoard();
+
+		Map<Integer, List<Pair>> scoreList = new HashMap<>();
+
+		for (int i = 0; i < board.length; i++) {
+			List<Pair> topNodes = getTopChildrenForARow(i, board);
+			for (Pair pair : topNodes) {
+				if (!compareAPairWithHashTable(board, pair, scoreList)) {
+					if (scoreList.get(pair.getEnergy()) == null) {
+						scoreList.put(pair.getEnergy(), new ArrayList<Pair>());
+					}
+					scoreList.get(pair.getEnergy()).add(pair);
+				}
+			}
+		}
+		for (int i = 0; i < board.length; i++) {
+			List<Pair> topNodes = getTopChildrenForAColumn(i, board);
+			for (Pair pair : topNodes) {
+				if (!compareAPairWithHashTable(board, pair, scoreList)) {
+					if (scoreList.get(pair.getEnergy()) == null) {
+						scoreList.put(pair.getEnergy(), new ArrayList<Pair>());
+					}
+					scoreList.get(pair.getEnergy()).add(pair);
+				}
+			}
+		}
+		return sortedHashMap(scoreList, parentNode);
+	}
+
+	private List<Node> sortedHashMap(Map<Integer, List<Pair>> scoreList, Node parentNode) {
+
+		List<Node> sortedList = new ArrayList<>();
+		Map<Integer, List<Pair>> sortedHashList = new TreeMap<>(scoreList).descendingMap();
+		sortedHashList.forEach((k, v) -> sortedList.addAll(createNodesFromPair(v, parentNode)));
+		return sortedList;
+	}
+
+	private List<Node> createNodesFromPair(List<Pair> pairList, Node parentNode) {
+
+		List<Node> nodeList = new ArrayList<>();
+		for (Pair pair : pairList) {
+			Node node = new Node();
+			node.setParent(parentNode);
+			node.setBoard(getUpdatedBoard(parentNode.getBoard(), pair));
+			node.setDepth(parentNode.getDepth() + 1);
+			node.setNodetype(parentNode.getNodetype().equals(NodeType.MAX) ? NodeType.MIN : NodeType.MAX);
+			node.setSelectedPosition(pair);
+			node.setScore(parentNode.getNodetype().equals(NodeType.MAX) ? parentNode.score + pair.getEnergy()
+					: parentNode.score - pair.getEnergy());
+			node.setUtility(evaluate(node.getBoard()).getEnergy());
+			nodeList.add(node);
+		}
+		return nodeList;
+	}
+
+	private boolean compareAPairWithHashTable(char[][] board, Pair pair, Map<Integer, List<Pair>> scoreList) {
+
+		List<Pair> hashList = scoreList.get(pair.getEnergy());
+		if (hashList != null) {
+			for (Pair hashPair : hashList) {
+				if (areTwoComponentsConnected(board, pair, hashPair)) {
+					return true;
+				}
+			}
+		}
+		return false;
+	}
+
+	private List<Pair> getTopChildrenForARow(int row, char[][] board) {
+
+		List<Pair> topRowNodes = new ArrayList<>();
+		for (int j = 0; j < board.length; j++) {
+			Pair pair = new Pair(row, j);
+			pair.setEnergy(getFruitValue(board, pair));
+
+			if (ifNotConnectedInAList(board, pair, topRowNodes)) {
+				topRowNodes.add(pair);
+			}
+		}
+		topRowNodes.sort((Comparator.comparingInt(Pair::getEnergy).reversed()));
+		printPair(topRowNodes.subList(0, 2));
+		return topRowNodes.subList(0, 2);
+	}
+
+	private void printPair(List<Pair> topRowNodes) {
+
+		for (Pair pair : topRowNodes) {
+			System.out.println("x is " + pair.xPosition + " y is " + pair.yPosition + " Score is " + pair.getEnergy());
+		}
+	}
+
+	private List<Pair> getTopChildrenForAColumn(int column, char[][] board) {
+
+		List<Pair> topColumnNodes = new ArrayList<>();
+		for (int j = 0; j < board.length; j++) {
+			Pair pair = new Pair(j, column);
+			pair.setEnergy(getFruitValue(board, pair));
+
+			if (ifNotConnectedInAList(board, pair, topColumnNodes)) {
+				topColumnNodes.add(pair);
+			}
+		}
+		topColumnNodes.sort((Comparator.comparingInt(Pair::getEnergy).reversed()));
+		printPair(topColumnNodes.subList(0, 2));
+		return topColumnNodes.subList(0, 2);
+	}
+
+	private boolean ifNotConnectedInAList(char[][] board, Pair pair, List<Pair> topColumnNodes) {
+
+		for (Pair iterativePair : topColumnNodes) {
+			if (pair.getEnergy() == iterativePair.getEnergy()) {
+				if (areTwoComponentsConnected(board, pair, iterativePair)) {
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	private char[][] getUpdatedBoard(char[][] board, Pair maxEnergyNode) {
@@ -44,6 +239,7 @@ public class Homework {
 		char[][] updateBoard = cloneChar(board);
 		boolean isTraversed[][] = new boolean[board.length][board.length];
 		Deque<Pair> valuePairstack = new ArrayDeque<>();
+		isTraversed[maxEnergyNode.getxPosition()][maxEnergyNode.getyPosition()] = true;
 		valuePairstack.addFirst(maxEnergyNode);
 		Pair pair;
 		int cellValue = getIntegerValueOfCell(board[maxEnergyNode.getxPosition()][maxEnergyNode.getyPosition()]);
@@ -53,25 +249,49 @@ public class Homework {
 
 			int xvalue = pair.getxPosition();
 			int yvalue = pair.getyPosition();
-			isTraversed[xvalue][yvalue] = true;
+
 			if (xvalue - 1 != -1 && isConsistent(board, isTraversed, xvalue - 1, yvalue, cellValue)) {
 				valuePairstack.addFirst(new Pair(xvalue - 1, yvalue));
-			} else if (xvalue + 1 < boardSize && isConsistent(board, isTraversed, xvalue + 1, yvalue, cellValue)) {
+				isTraversed[xvalue - 1][yvalue] = true;
+			}
+			if (xvalue + 1 < boardSize && isConsistent(board, isTraversed, xvalue + 1, yvalue, cellValue)) {
 				valuePairstack.addFirst(new Pair(xvalue + 1, yvalue));
-			} else if (yvalue - 1 != -1 && isConsistent(board, isTraversed, xvalue, yvalue - 1, cellValue)) {
+				isTraversed[xvalue + 1][yvalue] = true;
+			}
+			if (yvalue - 1 != -1 && isConsistent(board, isTraversed, xvalue, yvalue - 1, cellValue)) {
 				valuePairstack.addFirst(new Pair(xvalue, yvalue - 1));
-			} else if (yvalue + 1 < boardSize && isConsistent(board, isTraversed, xvalue, yvalue + 1, cellValue)) {
+				isTraversed[xvalue][yvalue - 1] = true;
+			}
+			if (yvalue + 1 < boardSize && isConsistent(board, isTraversed, xvalue, yvalue + 1, cellValue)) {
 				valuePairstack.addFirst(new Pair(xvalue, yvalue + 1));
+				isTraversed[xvalue][yvalue + 1] = true;
 			}
-
 			updateBoard[xvalue][yvalue] = '*';
-			for (int i = xvalue; i > 0; i--) {
-				updateBoard[i][yvalue] = updateBoard[i - 1][yvalue];
+		}
+
+		for (int i = 0; i < updateBoard.length; i++) {
+			List<Character> fruitArray = getUpdatedCharArray(updateBoard, i);
+			int numberOfStars = updateBoard.length - fruitArray.size();
+			for (int j = 0; j < numberOfStars; j++) {
+				updateBoard[j][i] = '*';
 			}
-			updateBoard[0][yvalue] = '*';
+			for (int k = numberOfStars; k < updateBoard.length; k++) {
+				updateBoard[k][i] = fruitArray.remove(0);
+			}
 		}
 
 		return updateBoard;
+	}
+
+	private List<Character> getUpdatedCharArray(char[][] updateBoard, int columnNumber) {
+
+		List<Character> charList = new ArrayList<>();
+		for (int i = 0; i < updateBoard.length; i++) {
+			if (updateBoard[i][columnNumber] != '*') {
+				charList.add(updateBoard[i][columnNumber]);
+			}
+		}
+		return charList;
 	}
 
 	private char[][] cloneChar(char[][] board) {
@@ -100,6 +320,7 @@ public class Homework {
 					valuePairstack = new ArrayDeque<>();
 					int value = getIntegerValueOfCell(board[i][j]);
 					valuePairstack.add(new Pair(i, j));
+					isTraversed[i][j] = true;
 					int energy = getEnergy(value, board, isTraversed, valuePairstack);
 					if (energy > maxEnergy) {
 						maxEnergy = energy;
@@ -114,11 +335,11 @@ public class Homework {
 	}
 
 	private int getFruitValue(char[][] board, Pair pair) {
-
 		boolean isTraversed[][] = new boolean[board.length][board.length];
 		Deque<Pair> valuePairstack = new ArrayDeque<>();
 		int value = getIntegerValueOfCell(board[pair.getxPosition()][pair.getyPosition()]);
 		valuePairstack.add(pair);
+		isTraversed[pair.getxPosition()][pair.getyPosition()] = true;
 		return getEnergy(value, board, isTraversed, valuePairstack);
 	}
 
@@ -131,20 +352,25 @@ public class Homework {
 			int xvalue = pair.getxPosition();
 			int yvalue = pair.getyPosition();
 
-			isTraversed[xvalue][yvalue] = true;
-
 			if (xvalue - 1 != -1 && isConsistent(board, isTraversed, xvalue - 1, yvalue, cellValue)) {
 				valuePairstack.addFirst(new Pair(xvalue - 1, yvalue));
 				nodeEnergy = nodeEnergy + 1;
-			} else if (xvalue + 1 < boardSize && isConsistent(board, isTraversed, xvalue + 1, yvalue, cellValue)) {
+				isTraversed[xvalue - 1][yvalue] = true;
+			}
+			if ((xvalue + 1 < boardSize) && (isConsistent(board, isTraversed, xvalue + 1, yvalue, cellValue))) {
 				valuePairstack.addFirst(new Pair(xvalue + 1, yvalue));
 				nodeEnergy = nodeEnergy + 1;
-			} else if (yvalue - 1 != -1 && isConsistent(board, isTraversed, xvalue, yvalue - 1, cellValue)) {
+				isTraversed[xvalue + 1][yvalue] = true;
+			}
+			if (yvalue - 1 != -1 && isConsistent(board, isTraversed, xvalue, yvalue - 1, cellValue)) {
 				valuePairstack.addFirst(new Pair(xvalue, yvalue - 1));
 				nodeEnergy = nodeEnergy + 1;
-			} else if (yvalue + 1 < boardSize && isConsistent(board, isTraversed, xvalue, yvalue + 1, cellValue)) {
+				isTraversed[xvalue][yvalue - 1] = true;
+			}
+			if (yvalue + 1 < boardSize && isConsistent(board, isTraversed, xvalue, yvalue + 1, cellValue)) {
 				valuePairstack.addFirst(new Pair(xvalue, yvalue + 1));
 				nodeEnergy = nodeEnergy + 1;
+				isTraversed[xvalue][yvalue + 1] = true;
 			}
 		}
 		return nodeEnergy;
@@ -165,22 +391,18 @@ public class Homework {
 	private Node createInitalNode() {
 		Node node = new Node();
 		node.setBoard(inputBoard);
-		node.setChildren(getChildren(inputBoard));
+		node.setDepth(0);
+		node.setNodetype(NodeType.MAX);
+		node.setChildren(getChildrenNodes(node));
 		node.setOrderedChildren(sortListByUtility(node.getChildren()));
 		node.setParent(null);
 		node.setPruned(false);
-		node.setDepth(0);
+
 		return node;
 	}
 
 	private List<Node> sortListByUtility(List<Node> children) {
 		return null;
-	}
-
-	private List<Node> getChildren(char[][] input) {
-
-		List<Node> children = new ArrayList<>();
-		return children;
 	}
 
 	private void readInputData() {
@@ -232,9 +454,14 @@ public class Homework {
 		homework.runAlphaBetaPruning();
 	}
 
+	public enum NodeType {
+		MIN, MAX;
+	}
+
 	class Node {
 
-		private float utility; // value you get after doing min max with children
+		private int utility; // value you get after doing min max with children
+		private int score;
 		private char[][] board; // the state of board at this particular node
 		private List<Node> children; // the list of children nodes available
 		private List<Node> orderedChildren; // the list of children nodes in the order of the utility
@@ -242,13 +469,23 @@ public class Homework {
 		private Pair selectedPosition;
 		private boolean isPruned;
 		private int depth;
+		private int totalScore;
+		private NodeType nodetype;
 
-		public float getUtility() {
+		public int getUtility() {
 			return utility;
 		}
 
-		public void setUtility(float utility) {
+		public void setUtility(int utility) {
 			this.utility = utility;
+		}
+
+		public int getScore() {
+			return score;
+		}
+
+		public void setScore(int score) {
+			this.score = score;
 		}
 
 		public char[][] getBoard() {
@@ -307,6 +544,21 @@ public class Homework {
 			this.depth = depth;
 		}
 
+		public NodeType getNodetype() {
+			return nodetype;
+		}
+
+		public void setNodetype(NodeType nodetype) {
+			this.nodetype = nodetype;
+		}
+
+		public int getTotalScore() {
+			return totalScore;
+		}
+
+		public void setTotalScore(int totalScore) {
+			this.totalScore = totalScore;
+		}
 	}
 
 	class Cell {
