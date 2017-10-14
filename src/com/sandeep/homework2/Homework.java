@@ -1,7 +1,9 @@
 package com.sandeep.homework2;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.nio.file.Files;
+import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
@@ -22,27 +24,74 @@ public class Homework {
 	private char[][] inputBoard;
 	private static final int minValue = -99999;
 
-	private void runAlphaBetaPruning() {
-		Deque<Node> dfsStack = new ArrayDeque<>();
+	private Node runAlphaBetaPruning(int maxDepth) {
 		Node initalNode = createInitalNode();
-		dfsStack.push(initalNode);
-		while (!dfsStack.isEmpty()) {
-			Node node = dfsStack.pop();
-			List<Node> children = getChildrenNodes(node);
-			for (Node node2 : children) {
-				System.out.println("Score is " + node2.selectedPosition.getEnergy() + "x is "
-						+ node2.getSelectedPosition().xPosition + "y is " + node2.getSelectedPosition().yPosition);
-			}
-		}
+		Node finalNode = maxNode(Integer.MIN_VALUE, Integer.MAX_VALUE, maxDepth, initalNode);
+		System.out.println("FInal node is " + finalNode.getSelectedPosition().getxPosition() + " "
+				+ finalNode.getSelectedPosition().getyPosition());
+		return finalNode;
 	}
 
 	private Node maxNode(int alpha, int beta, int maxDepth, Node node) {
 
-		if (isTerminal(node, maxDepth)) {
-			return node;
-		}
+		Node maxValue = new Node();
+		node.setUtility(Integer.MIN_VALUE);
 
-		return null;
+		if (isTerminal(node, maxDepth)) {
+			node.setUtility(evaluate(node).getEnergy());
+			node.setTotalScore(node.getScore() + node.getUtility());
+			return node;
+		} else {
+			List<Node> childrenList = getChildrenNodes(node);
+			for (Node childNode : childrenList) {
+				maxValue = nodeMax(maxValue, minNode(alpha, beta, maxDepth, childNode));
+				if (maxValue.getTotalScore() >= beta) {
+					System.out.println("Prune");
+					return maxValue;
+				}
+				alpha = Integer.max(alpha, maxValue.getTotalScore());
+			}
+		}
+		return maxValue;
+	}
+
+	private Node nodeMax(Node maxValue, Node minNode) {
+
+		if (maxValue.getTotalScore() >= minNode.getTotalScore()) {
+			return maxValue;
+		} else {
+			return minNode;
+		}
+	}
+
+	private Node minNode(int alpha, int beta, int maxDepth, Node node) {
+		Node minValue = new Node();
+		node.setUtility(Integer.MAX_VALUE);
+
+		if (isTerminal(node, maxDepth)) {
+			node.setUtility(evaluate(node).getEnergy());
+			node.setTotalScore(node.getScore() + node.getUtility());
+			return node;
+		} else {
+			List<Node> childrenList = getChildrenNodes(node);
+			for (Node childNode : childrenList) {
+				minValue = nodeMin(minValue, maxNode(alpha, beta, maxDepth, childNode));
+				if (minValue.getTotalScore() <= alpha) {
+					System.out.println("Prune");
+					return minValue;
+				}
+				beta = Integer.min(minValue.getTotalScore(), beta);
+			}
+		}
+		return minValue;
+	}
+
+	private Node nodeMin(Node minValue, Node maxNode) {
+		if (minValue.getTotalScore() <= maxNode.getTotalScore()) {
+			return minValue;
+		} else {
+			return maxNode;
+		}
 	}
 
 	private boolean isTerminal(Node node, int maxDepth) {
@@ -164,7 +213,6 @@ public class Homework {
 			node.setSelectedPosition(pair);
 			node.setScore(parentNode.getNodetype().equals(NodeType.MAX) ? parentNode.score + pair.getEnergy()
 					: parentNode.score - pair.getEnergy());
-			node.setUtility(evaluate(node.getBoard()).getEnergy());
 			nodeList.add(node);
 		}
 		return nodeList;
@@ -195,8 +243,8 @@ public class Homework {
 			}
 		}
 		topRowNodes.sort((Comparator.comparingInt(Pair::getEnergy).reversed()));
-		printPair(topRowNodes.subList(0, 2));
-		return topRowNodes.subList(0, 2);
+		// printPair(topRowNodes.size() >= 2 ? topRowNodes.subList(0, 2) : topRowNodes);
+		return (topRowNodes.size() >= 2 ? topRowNodes.subList(0, 2) : topRowNodes);
 	}
 
 	private void printPair(List<Pair> topRowNodes) {
@@ -218,8 +266,9 @@ public class Homework {
 			}
 		}
 		topColumnNodes.sort((Comparator.comparingInt(Pair::getEnergy).reversed()));
-		printPair(topColumnNodes.subList(0, 2));
-		return topColumnNodes.subList(0, 2);
+		// printPair(topColumnNodes.size() >= 2 ? topColumnNodes.subList(0, 2) :
+		// topColumnNodes);
+		return (topColumnNodes.size() >= 2 ? topColumnNodes.subList(0, 2) : topColumnNodes);
 	}
 
 	private boolean ifNotConnectedInAList(char[][] board, Pair pair, List<Pair> topColumnNodes) {
@@ -306,8 +355,9 @@ public class Homework {
 		return newBoard;
 	}
 
-	private Pair evaluate(char[][] board) {
+	private Pair evaluate(Node node) {
 
+		char[][] board = node.getBoard();
 		boolean isTraversed[][] = new boolean[board.length][board.length];
 		List<Pair> sortedPair = new ArrayList<>();
 		Deque<Pair> valuePairstack;
@@ -393,16 +443,9 @@ public class Homework {
 		node.setBoard(inputBoard);
 		node.setDepth(0);
 		node.setNodetype(NodeType.MAX);
-		node.setChildren(getChildrenNodes(node));
-		node.setOrderedChildren(sortListByUtility(node.getChildren()));
 		node.setParent(null);
-		node.setPruned(false);
 
 		return node;
-	}
-
-	private List<Node> sortListByUtility(List<Node> children) {
-		return null;
 	}
 
 	private void readInputData() {
@@ -448,10 +491,47 @@ public class Homework {
 	}
 
 	public static void main(String[] args) {
+
 		Homework homework = new Homework();
 		homework.readInputData();
 		homework.printInput();
-		homework.runAlphaBetaPruning();
+		int maxDepth = homework.calculateDepth();
+		Node outputNode = homework.runAlphaBetaPruning(maxDepth);
+		// Node outputNode =homework.runIterativeDeepening(maxDepth);
+		try {
+			homework.writeOutput(outputNode);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	private void writeOutput(Node outputNode) throws IOException {
+
+		List<String> lines = new ArrayList<>();
+		char[][] outputBoard = outputNode.getBoard();
+		lines.add(String.valueOf((char) ((int) 'A' + outputNode.getSelectedPosition().getyPosition()))
+				+ outputNode.getSelectedPosition().getxPosition());
+		for (int i = 0; i < outputNode.getBoard().length; i++) {
+			StringBuilder string = new StringBuilder();
+			for (int j = 0; j < outputNode.getBoard().length; j++) {
+				string.append(outputBoard[i][j]);
+			}
+			lines.add(string.toString());
+		}
+		Path file = Paths.get("output.txt");
+		Files.write(file, lines, Charset.forName("UTF-8"));
+	}
+
+	private void runIterativeDeepening(int maxDepth) {
+
+		for (int i = 0; i < maxDepth; i++) {
+			runAlphaBetaPruning(i + 1);
+		}
+
+	}
+
+	private int calculateDepth() {
+		return 1;
 	}
 
 	public enum NodeType {
@@ -463,11 +543,8 @@ public class Homework {
 		private int utility; // value you get after doing min max with children
 		private int score;
 		private char[][] board; // the state of board at this particular node
-		private List<Node> children; // the list of children nodes available
-		private List<Node> orderedChildren; // the list of children nodes in the order of the utility
 		private Node parent; //
 		private Pair selectedPosition;
-		private boolean isPruned;
 		private int depth;
 		private int totalScore;
 		private NodeType nodetype;
@@ -496,22 +573,6 @@ public class Homework {
 			this.board = board;
 		}
 
-		public List<Node> getChildren() {
-			return children;
-		}
-
-		public void setChildren(List<Node> children) {
-			this.children = children;
-		}
-
-		public List<Node> getOrderedChildren() {
-			return orderedChildren;
-		}
-
-		public void setOrderedChildren(List<Node> orderedChildren) {
-			this.orderedChildren = orderedChildren;
-		}
-
 		public Node getParent() {
 			return parent;
 		}
@@ -526,14 +587,6 @@ public class Homework {
 
 		public void setSelectedPosition(Pair selectedPosition) {
 			this.selectedPosition = selectedPosition;
-		}
-
-		public boolean isPruned() {
-			return isPruned;
-		}
-
-		public void setPruned(boolean isPruned) {
-			this.isPruned = isPruned;
 		}
 
 		public int getDepth() {
