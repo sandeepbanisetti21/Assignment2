@@ -7,6 +7,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
@@ -38,7 +39,7 @@ public class Homework {
 		node.setUtility(Integer.MIN_VALUE);
 
 		if (isTerminal(node, maxDepth)) {
-			node.setUtility(evaluate(node).getEnergy());
+			node.setUtility(evaluate(node));
 			node.setTotalScore(node.getScore() + node.getUtility());
 			return node;
 		} else {
@@ -69,7 +70,7 @@ public class Homework {
 		node.setUtility(Integer.MAX_VALUE);
 
 		if (isTerminal(node, maxDepth)) {
-			node.setUtility(evaluate(node).getEnergy());
+			node.setUtility(evaluate(node));
 			node.setTotalScore(node.getScore() + node.getUtility());
 			return node;
 		} else {
@@ -355,15 +356,12 @@ public class Homework {
 		return newBoard;
 	}
 
-	private Pair evaluate(Node node) {
+	private int evaluate(Node node) {
 
 		char[][] board = node.getBoard();
 		boolean isTraversed[][] = new boolean[board.length][board.length];
-		List<Pair> sortedPair = new ArrayList<>();
+		List<Integer> sortedPair = new ArrayList<>();
 		Deque<Pair> valuePairstack;
-		int maxEnergy = 0;
-		Pair maxEnergyPiar = new Pair(0, 0);
-
 		for (int i = 0; i < board.length; i++) {
 			for (int j = 0; j < board.length; j++) {
 				if (isTraversed[i][j] == false && (getIntegerValueOfCell(board[i][j]) != minValue)) {
@@ -372,16 +370,38 @@ public class Homework {
 					valuePairstack.add(new Pair(i, j));
 					isTraversed[i][j] = true;
 					int energy = getEnergy(value, board, isTraversed, valuePairstack);
-					if (energy > maxEnergy) {
-						maxEnergy = energy;
-						maxEnergyPiar.setxPosition(i);
-						maxEnergyPiar.setyPosition(j);
-						maxEnergyPiar.setEnergy(maxEnergy);
-					}
+					sortedPair.add(energy);
 				}
 			}
 		}
-		return maxEnergyPiar;
+		Collections.sort(sortedPair, Collections.reverseOrder());
+		return getEnergy(sortedPair, node.getNodetype());
+
+	}
+
+	private int getEnergy(List<Integer> sortedPair, NodeType nodetype) {
+
+		switch (nodetype) {
+		case MAX:
+
+			if (sortedPair.size() >= 2) {
+				return sortedPair.get(0) - sortedPair.get(1);
+			} else if (sortedPair.size() == 1) {
+				return sortedPair.get(0);
+			} else {
+				return 0;
+			}
+		case MIN:
+			if (sortedPair.size() >= 2) {
+				return sortedPair.get(1) - sortedPair.get(0);
+			} else if (sortedPair.size() == 1) {
+				return 0 - sortedPair.get(0);
+			} else {
+				return 0;
+			}
+		}
+		return 0;
+
 	}
 
 	private int getFruitValue(char[][] board, Pair pair) {
