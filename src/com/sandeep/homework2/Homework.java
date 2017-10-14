@@ -37,7 +37,6 @@ public class Homework {
 
 		Node maxValue = new Node();
 		node.setUtility(Integer.MIN_VALUE);
-
 		if (isTerminal(node, maxDepth)) {
 			node.setUtility(evaluate(node));
 			node.setTotalScore(node.getScore() + node.getUtility());
@@ -100,7 +99,22 @@ public class Homework {
 		if (node.getDepth() >= maxDepth) {
 			return true;
 		}
+		if (isEndBoard(node.getBoard())) {
+			return true;
+		}
 		return false;
+	}
+
+	private boolean isEndBoard(char[][] board) {
+
+		for (int i = 0; i < board.length; i++) {
+			for (int j = 0; j < board.length; j++) {
+				if (getIntegerValueOfCell(board[i][j]) != minValue) {
+					return false;
+				}
+			}
+		}
+		return true;
 	}
 
 	private void printNode(Node node2) {
@@ -236,11 +250,13 @@ public class Homework {
 
 		List<Pair> topRowNodes = new ArrayList<>();
 		for (int j = 0; j < board.length; j++) {
-			Pair pair = new Pair(row, j);
-			pair.setEnergy(getFruitValue(board, pair));
+			if (getIntegerValueOfCell(board[row][j]) != minValue) {
+				Pair pair = new Pair(row, j);
+				pair.setEnergy(getFruitValue(board, pair));
 
-			if (ifNotConnectedInAList(board, pair, topRowNodes)) {
-				topRowNodes.add(pair);
+				if (ifNotConnectedInAList(board, pair, topRowNodes)) {
+					topRowNodes.add(pair);
+				}
 			}
 		}
 		topRowNodes.sort((Comparator.comparingInt(Pair::getEnergy).reversed()));
@@ -259,11 +275,13 @@ public class Homework {
 
 		List<Pair> topColumnNodes = new ArrayList<>();
 		for (int j = 0; j < board.length; j++) {
-			Pair pair = new Pair(j, column);
-			pair.setEnergy(getFruitValue(board, pair));
+			if (getIntegerValueOfCell(board[j][column]) != minValue) {
+				Pair pair = new Pair(j, column);
+				pair.setEnergy(getFruitValue(board, pair));
 
-			if (ifNotConnectedInAList(board, pair, topColumnNodes)) {
-				topColumnNodes.add(pair);
+				if (ifNotConnectedInAList(board, pair, topColumnNodes)) {
+					topColumnNodes.add(pair);
+				}
 			}
 		}
 		topColumnNodes.sort((Comparator.comparingInt(Pair::getEnergy).reversed()));
@@ -529,8 +547,8 @@ public class Homework {
 
 		List<String> lines = new ArrayList<>();
 		char[][] outputBoard = outputNode.getBoard();
-		lines.add(String.valueOf((char) ((int) 'A' + outputNode.getSelectedPosition().getyPosition()))
-				+ outputNode.getSelectedPosition().getxPosition());
+		lines.add(String.valueOf((char) ((int) 'A' + outputNode.getSelectedPosition().getyPosition()+1))
+				+ outputNode.getSelectedPosition().getxPosition()+1);
 		for (int i = 0; i < outputNode.getBoard().length; i++) {
 			StringBuilder string = new StringBuilder();
 			for (int j = 0; j < outputNode.getBoard().length; j++) {
@@ -551,7 +569,7 @@ public class Homework {
 	}
 
 	private int calculateDepth() {
-		return 1;
+		return 3;
 	}
 
 	public enum NodeType {
