@@ -1,5 +1,7 @@
 package com.sandeep.homework2;
 
+//package com.sandeep.homework2;
+
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -17,7 +19,7 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
 
-public class Homework {
+public class homework {
 
 	private int boardSize = 0;
 	private int noOfFruits = 0;
@@ -27,36 +29,122 @@ public class Homework {
 
 	private Node runAlphaBetaPruning(int maxDepth) {
 		Node initalNode = createInitalNode();
-		Node finalNode = maxNode(Integer.MIN_VALUE, Integer.MAX_VALUE, maxDepth, initalNode);
-		System.out.println("FInal node is " + finalNode.getSelectedPosition().getxPosition() + " "
+		Node finalNode = maxNode(initalNode.getBoard(), 0, Integer.MIN_VALUE, Integer.MAX_VALUE, maxDepth, 0);
+		System.out.println("Score is " + finalNode.getSelectedPosition().energy + " x is "
+				+ finalNode.getSelectedPosition().getxPosition() + " y is "
 				+ finalNode.getSelectedPosition().getyPosition());
+		System.out.println(
+				"Value is " + getIntegerValueOfCell(inputBoard[finalNode.getSelectedPosition().getxPosition()][finalNode
+						.getSelectedPosition().getyPosition()]));
 		return finalNode;
 	}
 
-	private Node maxNode(int alpha, int beta, int maxDepth, Node node) {
+	private Node maxNode(char[][] board, int currentScore, int alpha, int beta, int maxDepth, int depth) {
 
 		Node maxValue = new Node();
-		node.setUtility(Integer.MIN_VALUE);
-		if (isTerminal(node, maxDepth)) {
-			node.setUtility(evaluate(node));
-			node.setTotalScore(node.getScore() + node.getUtility());
-			return node;
-		} else {
-			List<Node> childrenList = getChildrenNodes(node);
-			for (Node childNode : childrenList) {
-				maxValue = nodeMax(maxValue, minNode(alpha, beta, maxDepth, childNode));
-				if (maxValue.getTotalScore() >= beta) {
-					System.out.println("Prune");
-					return maxValue;
-				}
-				alpha = Integer.max(alpha, maxValue.getTotalScore());
+		int bestScore = Integer.MIN_VALUE;
+		maxValue.setTotalScore(bestScore);
+		char[][] newBoard;
+
+		if (depth >= maxDepth) {
+			Node updatedNode = new Node();
+			updatedNode.setSelectedPosition(null);
+			updatedNode.setTotalScore(currentScore + evaluate(board, NodeType.MAX));
+			printNodeMinMax(updatedNode);
+			return updatedNode;
+		}
+
+		List<Pair> childrenList = getChildrenNodes(new Node(board, new Pair(), 0));
+		if (isTerminal(board, childrenList)) {
+			if (childrenList.size() == 0) {
+				Node updatedNode = new Node();
+				updatedNode.setTotalScore(currentScore);
+				return updatedNode;
+			} else {
+				Node childrenNode = new Node();
+				childrenNode.setTotalScore(currentScore + evaluate(board, NodeType.MAX));
+				childrenNode.setSelectedPosition(childrenList.get(0));
+				return childrenNode;
 			}
 		}
+		for (Pair childrenNode : childrenList) {
+			newBoard = getUpdatedBoard(board, childrenNode);
+			maxValue = nodeMax(maxValue,
+					minNode(newBoard, currentScore + childrenNode.getEnergy(), alpha, beta, maxDepth, depth + 1));
+
+			if (maxValue.getTotalScore() > bestScore) {
+				bestScore = maxValue.getTotalScore();
+				maxValue.setSelectedPosition(childrenNode);
+			}
+
+			if (maxValue.getTotalScore() >= beta) {
+				System.out.println("Prune");
+				printNodeMinMax(maxValue);
+				return maxValue;
+			}
+			alpha = Integer.max(alpha, maxValue.getTotalScore());
+		}
+		printNodeMinMax(maxValue);
 		return maxValue;
+	}
+
+	private Node minNode(char[][] board, int currentScore, int alpha, int beta, int maxDepth, int depth) {
+
+		Node minValue = new Node();
+		int bestScore = Integer.MAX_VALUE;
+		minValue.setTotalScore(bestScore);
+		char[][] newBoard;
+
+		if (depth >= maxDepth) {
+			Node updatedNode = new Node();
+			updatedNode.setSelectedPosition(null);
+			updatedNode.setTotalScore(currentScore + evaluate(board, NodeType.MIN));
+			printNodeMinMax(updatedNode);
+			return updatedNode;
+		}
+
+		List<Pair> childrenList = getChildrenNodes(new Node(board, new Pair(), 0));
+		if (isTerminal(board, childrenList)) {
+			if (childrenList.size() == 0) {
+				Node updatedNode = new Node();
+				updatedNode.setTotalScore(currentScore);
+				return updatedNode;
+			} else {
+				Node childrenNode = new Node();
+				childrenNode.setTotalScore(currentScore + evaluate(board, NodeType.MIN));
+				childrenNode.setSelectedPosition(childrenList.get(0));
+				return childrenNode;
+			}
+		}
+		for (Pair childrenNode : childrenList) {
+			newBoard = getUpdatedBoard(board, childrenNode);
+			minValue = nodeMin(minValue,
+					maxNode(newBoard, currentScore - childrenNode.getEnergy(), alpha, beta, maxDepth, depth + 1));
+
+			if (minValue.getTotalScore() > bestScore) {
+				bestScore = minValue.getTotalScore();
+				minValue.setSelectedPosition(childrenNode);
+			}
+
+			if (minValue.getTotalScore() >= beta) {
+				System.out.println("Prune");
+				printNodeMinMax(minValue);
+				return minValue;
+			}
+			alpha = Integer.max(alpha, minValue.getTotalScore());
+		}
+		printNodeMinMax(minValue);
+		return minValue;
 	}
 
 	private Node nodeMax(Node maxValue, Node minNode) {
 
+		if (maxValue == null) {
+			return minNode;
+		}
+		if (minNode == null) {
+			return maxValue;
+		}
 		if (maxValue.getTotalScore() >= minNode.getTotalScore()) {
 			return maxValue;
 		} else {
@@ -64,29 +152,14 @@ public class Homework {
 		}
 	}
 
-	private Node minNode(int alpha, int beta, int maxDepth, Node node) {
-		Node minValue = new Node();
-		node.setUtility(Integer.MAX_VALUE);
-
-		if (isTerminal(node, maxDepth)) {
-			node.setUtility(evaluate(node));
-			node.setTotalScore(node.getScore() + node.getUtility());
-			return node;
-		} else {
-			List<Node> childrenList = getChildrenNodes(node);
-			for (Node childNode : childrenList) {
-				minValue = nodeMin(minValue, maxNode(alpha, beta, maxDepth, childNode));
-				if (minValue.getTotalScore() <= alpha) {
-					System.out.println("Prune");
-					return minValue;
-				}
-				beta = Integer.min(minValue.getTotalScore(), beta);
-			}
-		}
-		return minValue;
-	}
-
 	private Node nodeMin(Node minValue, Node maxNode) {
+
+		if (minValue == null) {
+			return maxNode;
+		}
+		if (maxNode == null) {
+			return minValue;
+		}
 		if (minValue.getTotalScore() <= maxNode.getTotalScore()) {
 			return minValue;
 		} else {
@@ -94,12 +167,14 @@ public class Homework {
 		}
 	}
 
-	private boolean isTerminal(Node node, int maxDepth) {
+	private boolean isTerminal(char[][] board, List<Pair> childrenList) {
 
-		if (node.getDepth() >= maxDepth) {
+		char[][] newBoard;
+		if (childrenList.size() <= 1) {
 			return true;
 		}
-		if (isEndBoard(node.getBoard())) {
+		newBoard = getUpdatedBoard(board, childrenList.get(0));
+		if (isEndBoard(newBoard)) {
 			return true;
 		}
 		return false;
@@ -120,6 +195,10 @@ public class Homework {
 	private void printNode(Node node2) {
 		System.out.println("Score is " + node2.selectedPosition.getEnergy() + "x is "
 				+ node2.getSelectedPosition().xPosition + "y is " + node2.getSelectedPosition().yPosition);
+	}
+
+	private void printNodeMinMax(Node node2) {
+
 	}
 
 	private boolean areTwoComponentsConnected(char[][] board, Pair inital, Pair next) {
@@ -177,7 +256,7 @@ public class Homework {
 		return false;
 	}
 
-	private List<Node> getChildrenNodes(Node parentNode) {
+	private List<Pair> getChildrenNodes(Node parentNode) {
 
 		char[][] board = parentNode.getBoard();
 
@@ -208,11 +287,11 @@ public class Homework {
 		return sortedHashMap(scoreList, parentNode);
 	}
 
-	private List<Node> sortedHashMap(Map<Integer, List<Pair>> scoreList, Node parentNode) {
+	private List<Pair> sortedHashMap(Map<Integer, List<Pair>> scoreList, Node parentNode) {
 
-		List<Node> sortedList = new ArrayList<>();
+		List<Pair> sortedList = new ArrayList<>();
 		Map<Integer, List<Pair>> sortedHashList = new TreeMap<>(scoreList).descendingMap();
-		sortedHashList.forEach((k, v) -> sortedList.addAll(createNodesFromPair(v, parentNode)));
+		sortedHashList.forEach((k, v) -> sortedList.addAll(v));
 		return sortedList;
 	}
 
@@ -221,13 +300,7 @@ public class Homework {
 		List<Node> nodeList = new ArrayList<>();
 		for (Pair pair : pairList) {
 			Node node = new Node();
-			node.setParent(parentNode);
-			node.setBoard(getUpdatedBoard(parentNode.getBoard(), pair));
-			node.setDepth(parentNode.getDepth() + 1);
-			node.setNodetype(parentNode.getNodetype().equals(NodeType.MAX) ? NodeType.MIN : NodeType.MAX);
 			node.setSelectedPosition(pair);
-			node.setScore(parentNode.getNodetype().equals(NodeType.MAX) ? parentNode.score + pair.getEnergy()
-					: parentNode.score - pair.getEnergy());
 			nodeList.add(node);
 		}
 		return nodeList;
@@ -253,7 +326,6 @@ public class Homework {
 			if (getIntegerValueOfCell(board[row][j]) != minValue) {
 				Pair pair = new Pair(row, j);
 				pair.setEnergy(getFruitValue(board, pair));
-
 				if (ifNotConnectedInAList(board, pair, topRowNodes)) {
 					topRowNodes.add(pair);
 				}
@@ -262,13 +334,6 @@ public class Homework {
 		topRowNodes.sort((Comparator.comparingInt(Pair::getEnergy).reversed()));
 		// printPair(topRowNodes.size() >= 2 ? topRowNodes.subList(0, 2) : topRowNodes);
 		return (topRowNodes.size() >= 2 ? topRowNodes.subList(0, 2) : topRowNodes);
-	}
-
-	private void printPair(List<Pair> topRowNodes) {
-
-		for (Pair pair : topRowNodes) {
-			System.out.println("x is " + pair.xPosition + " y is " + pair.yPosition + " Score is " + pair.getEnergy());
-		}
 	}
 
 	private List<Pair> getTopChildrenForAColumn(int column, char[][] board) {
@@ -288,6 +353,13 @@ public class Homework {
 		// printPair(topColumnNodes.size() >= 2 ? topColumnNodes.subList(0, 2) :
 		// topColumnNodes);
 		return (topColumnNodes.size() >= 2 ? topColumnNodes.subList(0, 2) : topColumnNodes);
+	}
+
+	private void printPair(List<Pair> topRowNodes) {
+
+		for (Pair pair : topRowNodes) {
+			System.out.println("x is " + pair.xPosition + " y is " + pair.yPosition + " Score is " + pair.getEnergy());
+		}
 	}
 
 	private boolean ifNotConnectedInAList(char[][] board, Pair pair, List<Pair> topColumnNodes) {
@@ -374,9 +446,8 @@ public class Homework {
 		return newBoard;
 	}
 
-	private int evaluate(Node node) {
+	private int evaluate(char[][] board, NodeType nodeType) {
 
-		char[][] board = node.getBoard();
 		boolean isTraversed[][] = new boolean[board.length][board.length];
 		List<Integer> sortedPair = new ArrayList<>();
 		Deque<Pair> valuePairstack;
@@ -393,11 +464,11 @@ public class Homework {
 			}
 		}
 		Collections.sort(sortedPair, Collections.reverseOrder());
-		return getEnergy(sortedPair, node.getNodetype());
+		return getMinMaxEnergy(sortedPair, nodeType);
 
 	}
 
-	private int getEnergy(List<Integer> sortedPair, NodeType nodetype) {
+	private int getMinMaxEnergy(List<Integer> sortedPair, NodeType nodetype) {
 
 		switch (nodetype) {
 		case MAX:
@@ -479,10 +550,6 @@ public class Homework {
 	private Node createInitalNode() {
 		Node node = new Node();
 		node.setBoard(inputBoard);
-		node.setDepth(0);
-		node.setNodetype(NodeType.MAX);
-		node.setParent(null);
-
 		return node;
 	}
 
@@ -530,14 +597,24 @@ public class Homework {
 
 	public static void main(String[] args) {
 
-		Homework homework = new Homework();
-		homework.readInputData();
-		homework.printInput();
-		int maxDepth = homework.calculateDepth();
-		Node outputNode = homework.runAlphaBetaPruning(maxDepth);
+		homework homework = new homework();
+		homework.run();
+	}
+
+	private void run2() {
+		readInputData();
+		printInput();
+		System.out.println(evaluate(inputBoard, NodeType.MIN));
+	}
+
+	private void run() {
+		readInputData();
+		printInput();
+		int maxDepth = calculateDepth();
+		Node outputNode = runAlphaBetaPruning(maxDepth);
 		// Node outputNode =homework.runIterativeDeepening(maxDepth);
 		try {
-			homework.writeOutput(outputNode);
+			writeOutput(outputNode);
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
@@ -546,12 +623,14 @@ public class Homework {
 	private void writeOutput(Node outputNode) throws IOException {
 
 		List<String> lines = new ArrayList<>();
-		char[][] outputBoard = outputNode.getBoard();
-		lines.add(String.valueOf((char) ((int) 'A' + outputNode.getSelectedPosition().getyPosition()+1))
-				+ outputNode.getSelectedPosition().getxPosition()+1);
-		for (int i = 0; i < outputNode.getBoard().length; i++) {
+		char[][] outputBoard = getUpdatedBoard(inputBoard, outputNode.getSelectedPosition());
+		int xValue = outputNode.getSelectedPosition().getxPosition() + 1;
+		int yValue = outputNode.getSelectedPosition().getyPosition();
+		String position = String.valueOf((char) ((int) 'A' + yValue)) + Integer.toString(xValue);
+		lines.add(position);
+		for (int i = 0; i < outputBoard.length; i++) {
 			StringBuilder string = new StringBuilder();
-			for (int j = 0; j < outputNode.getBoard().length; j++) {
+			for (int j = 0; j < outputBoard.length; j++) {
 				string.append(outputBoard[i][j]);
 			}
 			lines.add(string.toString());
@@ -578,29 +657,19 @@ public class Homework {
 
 	class Node {
 
-		private int utility; // value you get after doing min max with children
-		private int score;
 		private char[][] board; // the state of board at this particular node
-		private Node parent; //
 		private Pair selectedPosition;
-		private int depth;
 		private int totalScore;
-		private NodeType nodetype;
 
-		public int getUtility() {
-			return utility;
+		public Node(char[][] board, Pair selectedPosition, int totalScore) {
+			super();
+			this.board = board;
+			this.selectedPosition = selectedPosition;
+			this.totalScore = totalScore;
 		}
 
-		public void setUtility(int utility) {
-			this.utility = utility;
-		}
-
-		public int getScore() {
-			return score;
-		}
-
-		public void setScore(int score) {
-			this.score = score;
+		public Node() {
+			// TODO Auto-generated constructor stub
 		}
 
 		public char[][] getBoard() {
@@ -611,14 +680,6 @@ public class Homework {
 			this.board = board;
 		}
 
-		public Node getParent() {
-			return parent;
-		}
-
-		public void setParent(Node parent) {
-			this.parent = parent;
-		}
-
 		public Pair getSelectedPosition() {
 			return selectedPosition;
 		}
@@ -627,49 +688,12 @@ public class Homework {
 			this.selectedPosition = selectedPosition;
 		}
 
-		public int getDepth() {
-			return depth;
-		}
-
-		public void setDepth(int depth) {
-			this.depth = depth;
-		}
-
-		public NodeType getNodetype() {
-			return nodetype;
-		}
-
-		public void setNodetype(NodeType nodetype) {
-			this.nodetype = nodetype;
-		}
-
 		public int getTotalScore() {
 			return totalScore;
 		}
 
 		public void setTotalScore(int totalScore) {
 			this.totalScore = totalScore;
-		}
-	}
-
-	class Cell {
-		private boolean isTraversed = false;
-		private char value;
-
-		public boolean isTraversed() {
-			return isTraversed;
-		}
-
-		public void setTraversed(boolean isTraversed) {
-			this.isTraversed = isTraversed;
-		}
-
-		public char getValue() {
-			return value;
-		}
-
-		public void setValue(char value) {
-			this.value = value;
 		}
 	}
 
@@ -689,6 +713,10 @@ public class Homework {
 			this.xPosition = xPosition;
 			this.yPosition = yPosition;
 			this.energy = energy;
+		}
+
+		public Pair() {
+			// TODO Auto-generated constructor stub
 		}
 
 		public int getxPosition() {
