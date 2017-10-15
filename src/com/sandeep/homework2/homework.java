@@ -609,7 +609,7 @@ public class homework {
 
 	private void run() {
 		readInputData();
-		printInput();
+		// printInput();
 		int maxDepth = calculateDepth();
 		Node outputNode = runAlphaBetaPruning(maxDepth);
 		// Node outputNode =homework.runIterativeDeepening(maxDepth);
