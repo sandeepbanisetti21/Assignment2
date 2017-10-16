@@ -31,6 +31,7 @@ public class GamePlayer {
 
 			GamePlayer gamePlayer = new GamePlayer();
 			gamePlayer.generateInput();
+			// gamePlayer.standardInput();
 			gamePlayer.play();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -40,6 +41,7 @@ public class GamePlayer {
 	private void play() throws IOException {
 		boolean maxTurn = true;
 		homework homework = new homework();
+		FruitSolver fruitSolver = new FruitSolver();
 
 		do {
 			if (maxTurn) {
@@ -48,23 +50,18 @@ public class GamePlayer {
 				maxTurn = false;
 			} else {
 				System.out.println("Min Turn");
-				player2(homework);
+				player2(fruitSolver);
 				maxTurn = true;
 			}
 		} while (!updateInput(maxTurn) && player1Time >= 0.1 && player2Time >= 0.1);
 	}
 
-	private void player2(homework homework) {
+	private void player2(FruitSolver fruitSolver) {
 		long startTime = System.nanoTime();
-		Node outputNode = homework.run();
+		PointScore outputNode = fruitSolver.run();
 		long endTime = System.nanoTime();
 		long timeTaken = ((endTime - startTime) / 1000000000);
-		// System.out.println("Took " + timeTaken + " s");
-		// System.out.println("Move is " +
-		// outputNode.getSelectedPosition().getxPosition()
-		// + outputNode.getSelectedPosition().getyPosition());
-		//System.out.println("Score for this move " + outputNode.getSelectedPosition().getEnergy());
-		player2Score = player2Score + outputNode.getSelectedPosition().getEnergy();
+		player2Score = player2Score + outputNode.score;
 		System.out.println("Player 2 score " + player2Score);
 		player2Time = player2Time - timeTaken;
 	}
@@ -74,12 +71,7 @@ public class GamePlayer {
 		Node outputNode = homework.run();
 		long endTime = System.nanoTime();
 		long timeTaken = ((endTime - startTime) / 1000000000);
-		// System.out.println("Took " + timeTaken + " s");
-		// System.out.println("Move is " +
-		// outputNode.getSelectedPosition().getxPosition()
-		// + outputNode.getSelectedPosition().getyPosition());
-		//System.out.println("Score for this move " + outputNode.getSelectedPosition().getEnergy());
-		player1Score = player1Score + outputNode.getSelectedPosition().getEnergy();
+		player1Score = (int) (player1Score + Math.pow((outputNode.getSelectedPosition().getEnergy()),2));
 		System.out.println("Player 1 score " + player1Score);
 		player1Time = player1Time - timeTaken;
 	}
@@ -169,5 +161,13 @@ public class GamePlayer {
 		System.out.println("Size of baord " + sizeOfBoard);
 		System.out.println("Number of fruits " + numOfFruits);
 
+	}
+
+	private void standardInput() {
+		sizeOfBoard = 5;
+		numOfFruits = 2;
+		timeTaken = 300;
+		System.out.println("Size of baord " + sizeOfBoard);
+		System.out.println("Number of fruits " + numOfFruits);
 	}
 }
