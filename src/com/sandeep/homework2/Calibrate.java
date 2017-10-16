@@ -1,9 +1,15 @@
 package com.sandeep.homework2;
 
+import java.io.IOException;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Iterator;
 import java.util.List;
+
+import com.sandeep.homework2.homework.Node;
 
 public class Calibrate {
 
@@ -18,13 +24,36 @@ public class Calibrate {
 		int processedDepth = 0;
 		homework homework2 = new homework();
 		List<String> inputString = getInputList();
+		List<String> benchMarks = new ArrayList<>();
 
 		for (String input : inputString) {
 			processedDepth = 1;
 			Args args = constructArgs(input);
+			homework homework = new homework(args.getSizeOfBoard(), args.getNumOffruits(), args.getTimeTaken(),
+					args.getBoard());
 
+			while (processedDepth < 5) {
+				Long startTime = System.currentTimeMillis();
+				Node node = homework.runAlphaBetaPruning(processedDepth);
+				Long end = (System.currentTimeMillis() - startTime) / 1000 + 1;
+				String result = args.getSizeOfBoard() + "," + args.getNumOffruits() + ","
+						+ Integer.toString(processedDepth) + "," + end.toString();
+				System.out.println(result);
+				benchMarks.add(result);
+				processedDepth++;
+			}
+		}
+		try {
+			writeBenchmarks(benchMarks);
+		} catch (IOException e) {
+			e.printStackTrace();
 		}
 
+	}
+
+	private void writeBenchmarks(List<String> benchMarks) throws IOException {
+		Path file = Paths.get("calibration.txt");
+		Files.write(file, benchMarks, Charset.forName("UTF-8"));
 	}
 
 	private Args constructArgs(String input) {
