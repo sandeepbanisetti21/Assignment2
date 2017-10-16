@@ -33,9 +33,9 @@ public class homework {
 		System.out.println("Score is " + finalNode.getSelectedPosition().energy + " x is "
 				+ finalNode.getSelectedPosition().getxPosition() + " y is "
 				+ finalNode.getSelectedPosition().getyPosition());
-		System.out.println(
-				"Value is " + getIntegerValueOfCell(inputBoard[finalNode.getSelectedPosition().getxPosition()][finalNode
-						.getSelectedPosition().getyPosition()]));
+//		System.out.println(
+//				"Value is " + getIntegerValueOfCell(inputBoard[finalNode.getSelectedPosition().getxPosition()][finalNode
+//						.getSelectedPosition().getyPosition()]));
 		return finalNode;
 	}
 
@@ -607,7 +607,7 @@ public class homework {
 		System.out.println(evaluate(inputBoard, NodeType.MIN));
 	}
 
-	private void run() {
+	public Node run() {
 		readInputData();
 		// printInput();
 		int maxDepth = calculateDepth();
@@ -618,6 +618,7 @@ public class homework {
 		} catch (Exception e) {
 			e.printStackTrace();
 		}
+		return outputNode;
 	}
 
 	private void writeOutput(Node outputNode) throws IOException {
