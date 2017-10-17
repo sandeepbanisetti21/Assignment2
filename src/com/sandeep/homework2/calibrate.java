@@ -1,4 +1,5 @@
-package com.sandeep.homework2;
+//package com.sandeep.homework2;
+//package com.sandeep.homework2;
 
 import java.io.IOException;
 import java.nio.charset.Charset;
@@ -8,50 +9,63 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 
-import com.sandeep.homework2.homework.Node;
-
-public class Calibrate {
+public class calibrate {
+	private List<String> benchMarks;
 
 	public static void main(String[] args) {
 
-		Calibrate calibrare = new Calibrate();
-		calibrare.getBenchMarkData();
+		calibrate calibrare = new calibrate();
+		try {
+			calibrate.runWithTimeout(new Runnable() {
+				@Override
+				public void run() {
+					calibrare.getBenchMarkData();
+				}
+			}, 290000, TimeUnit.MILLISECONDS);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+		try {
+			calibrare.writeBenchmarks();
+			System.exit(0);
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 
-	private void getBenchMarkData() {
+	private List<String> getBenchMarkData() {
 
-		int processedDepth = 0;
-		homework homework2 = new homework();
+		int processedDepth = 1;
 		List<String> inputString = getInputList();
-		List<String> benchMarks = new ArrayList<>();
+		benchMarks = new ArrayList<>();
 
-		for (String input : inputString) {
-			processedDepth = 1;
-			Args args = constructArgs(input);
-			homework homework = new homework(args.getSizeOfBoard(), args.getNumOffruits(), args.getTimeTaken(),
-					args.getBoard());
-
-			while (processedDepth < 5) {
+		while (processedDepth < 5) {
+			for (String input : inputString) {
+				Args args = constructArgs(input);
+				homework homework = new homework(args.getSizeOfBoard(), args.getNumOffruits(), args.getTimeTaken(),
+						args.getBoard());
 				Long startTime = System.currentTimeMillis();
-				Node node = homework.runAlphaBetaPruning(processedDepth);
+				homework.runAlphaBetaPruning(processedDepth);
 				Long end = (System.currentTimeMillis() - startTime) / 1000 + 1;
 				String result = args.getSizeOfBoard() + "," + args.getNumOffruits() + ","
 						+ Integer.toString(processedDepth) + "," + end.toString();
 				System.out.println(result);
 				benchMarks.add(result);
-				processedDepth++;
 			}
+			processedDepth++;
 		}
-		try {
-			writeBenchmarks(benchMarks);
-		} catch (IOException e) {
-			e.printStackTrace();
-		}
-
+		return benchMarks;
 	}
 
-	private void writeBenchmarks(List<String> benchMarks) throws IOException {
+	private void writeBenchmarks() throws IOException {
 		Path file = Paths.get("calibration.txt");
 		Files.write(file, benchMarks, Charset.forName("UTF-8"));
 	}
@@ -100,6 +114,38 @@ public class Calibrate {
 				size15_fruits2, size15_fruits5, size15_fruits9, size20_fruits2, size20_fruits5, size20_fruits9,
 				size26_fruits2, size26_fruits5, size26_fruits9));
 		return inputList;
+	}
+
+	public static void runWithTimeout(final Runnable runnable, long timeout, TimeUnit timeUnit) throws Exception {
+		runWithTimeout(new Callable<Object>() {
+			@Override
+			public Object call() throws Exception {
+				runnable.run();
+				return null;
+			}
+		}, timeout, timeUnit);
+	}
+
+	public static <T> T runWithTimeout(Callable<T> callable, long timeout, TimeUnit timeUnit) throws Exception {
+		final ExecutorService executor = Executors.newSingleThreadExecutor();
+		final Future<T> future = executor.submit(callable);
+		executor.shutdown();
+		try {
+			return future.get(timeout, timeUnit);
+		} catch (TimeoutException e) {
+
+			future.cancel(true);
+			throw e;
+		} catch (ExecutionException e) {
+			Throwable t = e.getCause();
+			if (t instanceof Error) {
+				throw (Error) t;
+			} else if (t instanceof Exception) {
+				throw (Exception) t;
+			} else {
+				throw new IllegalStateException(t);
+			}
+		}
 	}
 
 	class Args {
