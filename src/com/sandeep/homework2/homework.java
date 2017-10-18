@@ -1,5 +1,6 @@
 package com.sandeep.homework2;
 
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -809,6 +810,10 @@ public class homework {
 		try {
 			String currentDirectory = System.getProperty("user.dir");
 			List<String> inputLines = new ArrayList<>();
+			File f = new File(currentDirectory + "/calibration.txt");
+			if(!f.isFile()) {
+				return benchmarkInfo;
+			}
 			stream = Files.lines((Paths.get(currentDirectory + "/calibration.txt")));
 			inputLines = stream.collect(Collectors.toList());
 			inputData = inputLines.iterator();
@@ -820,12 +825,11 @@ public class homework {
 				}
 				benchmarkInfo.add(tmperoryList);
 			}
+			stream.close();
 			return benchmarkInfo;
 		} catch (Exception e) {
 			e.printStackTrace();
 			return benchmarkInfo;
-		} finally {
-			stream.close();
 		}
 	}
 
