@@ -31,7 +31,20 @@ public class GamePlayer {
 
 			GamePlayer gamePlayer = new GamePlayer();
 			gamePlayer.generateInput();
-			// gamePlayer.standardInput();
+//			gamePlayer.standardInput();
+			gamePlayer.play();
+			System.out.println("Rohith: " + gamePlayer.player2Score + ", " + gamePlayer.player2Time + ", " + "sandy: " + gamePlayer.player1Time);
+		} catch (Exception e) {
+			e.printStackTrace();
+		}
+	}
+
+	public void run(Integer n, Integer f) {
+		try {
+
+			GamePlayer gamePlayer = new GamePlayer();
+			gamePlayer.generateInput(n, f);
+//			gamePlayer.standardInput();
 			gamePlayer.play();
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -39,17 +52,17 @@ public class GamePlayer {
 	}
 
 	private void play() throws IOException {
-		boolean maxTurn = true;
+		boolean maxTurn = false;
 		homework homework = new homework();
 		FruitSolver fruitSolver = new FruitSolver();
 
 		do {
 			if (maxTurn) {
-				System.out.println("Max Turn");
+//				System.out.println("Max Turn");
 				player1(homework);
 				maxTurn = false;
 			} else {
-				System.out.println("Min Turn");
+//				System.out.println("Min Turn");
 				player2(fruitSolver);
 				maxTurn = true;
 			}
@@ -62,8 +75,9 @@ public class GamePlayer {
 		long endTime = System.nanoTime();
 		long timeTaken = ((endTime - startTime) / 1000000000);
 		player2Score = player2Score + outputNode.score;
-		System.out.println("Player 2 score " + player2Score);
+		System.out.println("Rohith score " + player2Score);
 		player2Time = player2Time - timeTaken;
+		System.out.println("Rohith time remaining: " + player2Time);
 	}
 
 	private void player1(homework homework) {
@@ -72,19 +86,20 @@ public class GamePlayer {
 		long endTime = System.nanoTime();
 		long timeTaken = ((endTime - startTime) / 1000000000);
 		player1Score = (int) (player1Score + Math.pow((outputNode.getSelectedPosition().getEnergy()),2));
-		System.out.println("Player 1 score " + player1Score);
+		System.out.println("Sandy score " + player1Score);
 		player1Time = player1Time - timeTaken;
 	}
 
 	private boolean updateInput(boolean maxTurn) throws IOException {
-
+//		System.out.println(player1Time);
+//		System.out.println(player2Time);
 		List<String> lines = new ArrayList<>();
 		lines.add(Integer.toString(sizeOfBoard));
 		lines.add(Integer.toString(numOfFruits));
 		if (maxTurn)
-			lines.add(Float.toString(player2Time));
-		else
 			lines.add(Float.toString(player1Time));
+		else
+			lines.add(Float.toString(player2Time));
 		char[][] board = readFile();
 		if (isEndBoard(board)) {
 			return true;
@@ -149,10 +164,22 @@ public class GamePlayer {
 		return minValue;
 	}
 
+	private void generateInput(Integer size, Integer fruits) throws IOException{
+		sizeOfBoard = size; //rand.nextInt(26)
+		numOfFruits = fruits;
+		timeTaken = 300;
+
+		TestGenerator testGenerator = new TestGenerator();
+		testGenerator.createBoard(numOfFruits, sizeOfBoard, timeTaken);
+
+		System.out.println("Size of baord " + sizeOfBoard);
+		System.out.println("Number of fruits " + numOfFruits);
+	}
+
 	private void generateInput() throws IOException {
 		Random rand = new Random();
-		sizeOfBoard = rand.nextInt(26);
-		numOfFruits = rand.nextInt(10);
+		sizeOfBoard = 10; //rand.nextInt(26)
+		numOfFruits = 6;
 		timeTaken = 300;
 
 		TestGenerator testGenerator = new TestGenerator();
@@ -164,10 +191,34 @@ public class GamePlayer {
 	}
 
 	private void standardInput() {
-		sizeOfBoard = 5;
+		sizeOfBoard = 26;
 		numOfFruits = 2;
 		timeTaken = 300;
 		System.out.println("Size of baord " + sizeOfBoard);
 		System.out.println("Number of fruits " + numOfFruits);
 	}
 }
+
+/*
+    public PointScore alpha_beta(Input input, Integer depth){
+        Integer [][] newBoard = deepcopy(input.board, input.size);
+        PointScore p = maxNode(input.board, input.size, input.fruits, depth, 0, Integer.MIN_VALUE, Integer.MAX_VALUE);
+        p.score = pointVal(newBoard, input.size, p.point);
+        return p;
+    }
+
+
+    public PointScore run(){
+        Input input = readInput();
+        Integer depth = getDepth(input);
+        System.out.println("estimated depth: " + depth);
+        PointScore ans = alpha_beta(input, depth);
+        try{
+            writeOutput(ans.point, input.board, input.size);
+        } catch (IOException e){
+            e.printStackTrace();
+        }
+        return ans;
+    }
+
+ */
