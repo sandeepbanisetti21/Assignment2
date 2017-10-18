@@ -1,7 +1,5 @@
 package com.sandeep.homework2;
 
-//package com.sandeep.homework2;
-
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
@@ -9,12 +7,15 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Map.Entry;
 import java.util.TreeMap;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -27,15 +28,28 @@ public class homework {
 	private char[][] inputBoard;
 	private static final int minValue = -99999;
 
-	private Node runAlphaBetaPruning(int maxDepth) {
+	public homework(int boardSize, int noOfFruits, float timeRemaining, char[][] inputBoard) {
+		super();
+		this.boardSize = boardSize;
+		this.noOfFruits = noOfFruits;
+		this.timeRemaining = timeRemaining;
+		this.inputBoard = inputBoard;
+	}
+
+	public homework() {
+
+	}
+
+	public Node runAlphaBetaPruning(int maxDepth) {
 		Node initalNode = createInitalNode();
 		Node finalNode = maxNode(initalNode.getBoard(), 0, Integer.MIN_VALUE, Integer.MAX_VALUE, maxDepth, 0);
 		System.out.println("Score is " + finalNode.getSelectedPosition().energy + " x is "
 				+ finalNode.getSelectedPosition().getxPosition() + " y is "
 				+ finalNode.getSelectedPosition().getyPosition());
-//		System.out.println(
-//				"Value is " + getIntegerValueOfCell(inputBoard[finalNode.getSelectedPosition().getxPosition()][finalNode
-//						.getSelectedPosition().getyPosition()]));
+		// System.out.println(
+		// "Value is " +
+		// getIntegerValueOfCell(inputBoard[finalNode.getSelectedPosition().getxPosition()][finalNode
+		// .getSelectedPosition().getyPosition()]));
 		return finalNode;
 	}
 
@@ -596,23 +610,43 @@ public class homework {
 	}
 
 	public static void main(String[] args) {
-
 		homework homework = new homework();
 		homework.run();
 	}
 
 	private void run2() {
 		readInputData();
-		printInput();
-		System.out.println(evaluate(inputBoard, NodeType.MIN));
+		calculateDepth();
+	}
+
+	private Node getGreedyNode() {
+
+		Node outputNode = new Node();
+		Pair pair = null;
+
+		for (int i = inputBoard.length - 1; i >= 0; i--) {
+			for (int j = inputBoard.length - 1; j >= 0; j--) {
+				if (getIntegerValueOfCell(inputBoard[i][j]) != minValue)
+					pair = new Pair(i, j);
+				outputNode.setSelectedPosition(pair);
+				return outputNode;
+			}
+
+		}
+		return null;
 	}
 
 	public Node run() {
 		readInputData();
-		// printInput();
 		int maxDepth = calculateDepth();
-		Node outputNode = runAlphaBetaPruning(maxDepth);
-		// Node outputNode =homework.runIterativeDeepening(maxDepth);
+		System.out.println("Depth taken" + maxDepth);
+		Node outputNode;
+
+		if (maxDepth == 0) {
+			outputNode = getGreedyNode();
+		} else {
+			outputNode = runAlphaBetaPruning(maxDepth);
+		}
 		try {
 			writeOutput(outputNode);
 		} catch (Exception e) {
@@ -640,16 +674,211 @@ public class homework {
 		Files.write(file, lines, Charset.forName("UTF-8"));
 	}
 
-	private void runIterativeDeepening(int maxDepth) {
+	private int calculateDepth() {
 
-		for (int i = 0; i < maxDepth; i++) {
-			runAlphaBetaPruning(i + 1);
+		if (timeRemaining < 10) {
+			if (timeRemaining < 3)
+				return 0;
+			else if (timeRemaining < 5)
+				return 1;
+			else if (boardSize >= 17) {
+				return 1;
+			}
+		}
+		if (timeRemaining > 270) {
+			if (boardSize >= 20) {
+				return 3;
+			} else if (boardSize >= 12 && boardSize < 20) {
+				if (noOfFruits <= 5)
+					return 4;
+				else
+					return 3;
+			} else if (boardSize < 12) {
+				if (noOfFruits <= 5)
+					return 5;
+				else
+					return 4;
+			}
+		} else if (timeRemaining > 125) {
+			if (boardSize <= 13 && boardSize > 8) {
+				return 4;
+			} else if (boardSize <= 8) {
+				return 5;
+			}
+		} else if (timeRemaining > 40) {
+			if (boardSize < 10) {
+				return 4;
+			}
+		}
+		Map<Integer, Integer> clusterCountList = getDistinctClusterCount();
+		List possibleTimeHeuristics = getPossibleTime(clusterCountList);
+		int countOfFruits = (int) possibleTimeHeuristics.get(0);
+		int clusterCount = (int) possibleTimeHeuristics.get(1);
+		int possibleSteps = (int) possibleTimeHeuristics.get(2);
+		int distinctFruits = getDifferentFruits();
+
+		Double possibleTimeForStep = timeRemaining / (1.5 * possibleSteps);
+
+		if (possibleTimeForStep < 0.1 && timeRemaining < 10)
+			return 0;
+
+		if (possibleTimeForStep > 1) {
+			possibleTimeForStep = possibleTimeForStep;
+		} else {
+			possibleTimeForStep = 1.0;
 		}
 
+		List<List<Integer>> benchmarkInfo = readBenchmarks();
+
+		if (timeRemaining > 200 && boardSize < 20 && possibleSteps < 10)
+			return 3;
+
+		if (timeRemaining > 50 && clusterCount < 10)
+			return 4;
+
+		if (timeRemaining < 10) {
+			if (possibleSteps >= 25)
+				return 1;
+			if (possibleSteps < 10)
+				return 2;
+		}
+
+		return runRubric(possibleTimeForStep, benchmarkInfo, distinctFruits);
 	}
 
-	private int calculateDepth() {
-		return 3;
+	private int getDifferentFruits() {
+		int count = 0;
+		int traversed[] = new int[10];
+
+		for (int i = 0; i < boardSize; i++)
+			for (int j = 0; j < boardSize; j++)
+				if (getIntegerValueOfCell(inputBoard[i][j]) != minValue)
+					traversed[getIntegerValueOfCell(inputBoard[i][j])] = 1;
+
+		for (int i = 0; i < 10; i++)
+			if (traversed[i] != 0)
+				count++;
+		return count;
+	}
+
+	private int runRubric(Double possibleTimeForStep, List<List<Integer>> benchmarkInfo, int distinctFruits) {
+
+		int iterator = 0;
+		int focalPoint;
+		int k;
+
+		while (iterator < benchmarkInfo.size() && boardSize > benchmarkInfo.get(iterator).get(0))
+			iterator++;
+
+		while (iterator < benchmarkInfo.size() && distinctFruits > benchmarkInfo.get(iterator).get(1))
+			iterator++;
+
+		focalPoint = 4 * ((iterator / 4) + 1);
+		k = iterator;
+
+		while (iterator < focalPoint && iterator < benchmarkInfo.size() && possibleTimeForStep >= benchmarkInfo.get(iterator).get(3))
+			iterator++;
+
+		if (iterator > k)
+			iterator--;
+
+		if (iterator >= 0 && iterator < benchmarkInfo.size())
+			return benchmarkInfo.get(iterator).get(2);
+		else
+			return 1;
+	}
+
+	private ArrayList getPossibleTime(Map<Integer, Integer> clusterCount) {
+		int counter = clusterCount.size();
+		int possibelNumberOfSteps = 0;
+		Iterator<Entry<Integer, Integer>> it = clusterCount.entrySet().iterator();
+
+		while (it.hasNext()) {
+			Map.Entry pair = (Map.Entry) it.next();
+			possibelNumberOfSteps = add(possibelNumberOfSteps, (int) pair.getValue());
+			it.remove(); // avoids a ConcurrentModificationException
+		}
+		return new ArrayList(Arrays.asList(counter, possibelNumberOfSteps, (counter + possibelNumberOfSteps) / 2));
+	}
+
+	public List<List<Integer>> readBenchmarks() {
+		List<List<Integer>> benchmarkInfo = new ArrayList<>();
+		Iterator<String> inputData;
+		Stream<String> stream = null;
+		String string = null;
+		try {
+			String currentDirectory = System.getProperty("user.dir");
+			List<String> inputLines = new ArrayList<>();
+			stream = Files.lines((Paths.get(currentDirectory + "/calibration.txt")));
+			inputLines = stream.collect(Collectors.toList());
+			inputData = inputLines.iterator();
+			while (inputData.hasNext()) {
+				ArrayList<Integer> tmperoryList = new ArrayList<>();
+				string = inputData.next();
+				for (String s : Arrays.asList(string.split(","))) {
+					tmperoryList.add(Integer.parseInt(s));
+				}
+				benchmarkInfo.add(tmperoryList);
+			}
+			return benchmarkInfo;
+		} catch (Exception e) {
+			e.printStackTrace();
+			return benchmarkInfo;
+		} finally {
+			stream.close();
+		}
+	}
+
+	private int add(int possibelNumberOfSteps, int value) {
+
+		return possibelNumberOfSteps + value;
+	}
+
+	private Map<Integer, Integer> getDistinctClusterCount() {
+
+		Map<Integer, Integer> distinctCluster = new HashMap<>();
+		boolean isTraversed[][] = new boolean[boardSize][boardSize];
+		Pair pair = null;
+		char[][] board = cloneChar(inputBoard);
+		for (int i = 0; i < boardSize; i++) {
+			for (int j = 0; j < boardSize; j++) {
+				if (!isTraversed[i][j] && getIntegerValueOfCell(inputBoard[i][j]) != minValue) {
+					Deque<Pair> dfsStack = new ArrayDeque<>();
+					isTraversed[i][j] = true;
+					int cellValue = getIntegerValueOfCell(inputBoard[i][j]);
+					if (distinctCluster.get(cellValue) == null) {
+						distinctCluster.put(cellValue, 1);
+					} else {
+						distinctCluster.put(cellValue, distinctCluster.get(cellValue) + 1);
+					}
+					dfsStack.addFirst(new Pair(i, j));
+					while (!dfsStack.isEmpty()) {
+						pair = dfsStack.pop();
+						int xvalue = pair.getxPosition();
+						int yvalue = pair.getyPosition();
+
+						if (xvalue - 1 != -1 && isConsistent(board, isTraversed, xvalue - 1, yvalue, cellValue)) {
+							dfsStack.addFirst(new Pair(xvalue - 1, yvalue));
+							isTraversed[xvalue - 1][yvalue] = true;
+						}
+						if ((xvalue + 1 < boardSize)
+								&& (isConsistent(board, isTraversed, xvalue + 1, yvalue, cellValue))) {
+							dfsStack.addFirst(new Pair(xvalue + 1, yvalue));
+							isTraversed[xvalue + 1][yvalue] = true;
+						}
+						if (yvalue - 1 != -1 && isConsistent(board, isTraversed, xvalue, yvalue - 1, cellValue)) {
+							dfsStack.addFirst(new Pair(xvalue, yvalue - 1));
+							isTraversed[xvalue][yvalue - 1] = true;
+						}
+						if (yvalue + 1 < boardSize && isConsistent(board, isTraversed, xvalue, yvalue + 1, cellValue)) {
+							dfsStack.addFirst(new Pair(xvalue, yvalue + 1));
+							isTraversed[xvalue][yvalue + 1] = true;
+						}
+					}
+				}
+			}
+		}
+		return distinctCluster;
 	}
 
 	public enum NodeType {
